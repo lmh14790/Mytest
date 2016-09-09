@@ -3,30 +3,28 @@ package com.example.ok.mytest;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.LinearInterpolator;
-import android.widget.LinearLayout;
-import android.widget.Scroller;
+import android.view.animation.Animation;
 import android.widget.Toast;
 
 /**
  * Created by Ok on 2016/9/5.
+ * 通过制自定义补间动画来实现平滑滚动
  */
-public class MyScoller extends ViewGroup{
+public class MyScoller3 extends ViewGroup{
     private int width,higth;
     public int lWidth;
-    private Scroller mScroller;
     double oldTime,newTime;
     private double oldX,nowX;
     private int move;
     private long time;
     private boolean isMove;
+    SoomthMoveAnimation mAnimation;
     /**
      * 要滑动到的目标位置
      */
@@ -39,51 +37,54 @@ public class MyScoller extends ViewGroup{
      * 判断是左滑还是右滑
      */
     private int mode;
-    public MyScoller(Context context) {
+    public MyScoller3(Context context) {
         super(context);
         initView(context);
     }
 
-    public MyScoller(Context context, AttributeSet attrs) {
+    public MyScoller3(Context context, AttributeSet attrs) {
         super(context, attrs);
         initView(context);
     }
 
-    public MyScoller(Context context, AttributeSet attrs, int defStyleAttr) {
+    public MyScoller3(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initView(context);
     }
     public void initView(Context context){
-        LinearLayout l1=new LinearLayout(context);
-        l1.setBackgroundColor(Color.BLUE);
-        LinearLayout l2=new LinearLayout(context);
-        l1.setBackgroundColor(Color.GREEN);
-        LinearLayout l3=new LinearLayout(context);
-        l1.setBackgroundColor(Color.BLACK);
-
-        try {
-            mScroller=new Scroller(context, LinearInterpolator.class.newInstance());
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-
-//        addView(l1,0);
-//        addView(l2,1);
-//        addView(l3,2);
-
         DisplayMetrics dm=new DisplayMetrics();
         ((Activity)context).getWindowManager().getDefaultDisplay().getMetrics(dm);
         width=dm.widthPixels;
          higth=dm.heightPixels;
             initTouchEvent();
+        mAnimation=new SoomthMoveAnimation(this);
+        mAnimation.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                isMove=true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                isMove=false;
+                mCourrentPosition=getScrollX();
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
     }
 
+
     /**
-     * 设置开始移动至下一屏  的位移大小和动画时常
+     *
+     * @param mode
+     * @param dx
+     * @param duration
      */
-    public void startMove(int mode,int dx,int duration){
+    public void startMove2(int mode,int dx,int duration){
         if(mode==1){
             if(mTargetPosition-dx<0){
                 Toast.makeText(this.getContext(),"已经到第一页了",Toast.LENGTH_SHORT).show();
@@ -97,26 +98,21 @@ public class MyScoller extends ViewGroup{
             }
             mTargetPosition+=-dx;
         }
-        Log.e("tag", "----startMove---- mTargetPosition " + mTargetPosition);
-        mScroller.startScroll(mCourrentPosition,0,mTargetPosition-mCourrentPosition,0,duration);
-        invalidate();
+        mAnimation.setDuration(duration);
+        mAnimation.setCourrentPosition(mCourrentPosition);
+        mAnimation.setTargetPosition(mTargetPosition);
+        startAnimation(mAnimation);
+       // animator.setDuration(duration);
+        //animator.
+//        //animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+//            @Override
+//            public void onAnimationUpdate(ValueAnimator animation) {
+//
+//            }
+//        });
 
     }
 
-    @Override
-    public void computeScroll() {
-      if(mScroller.computeScrollOffset()){
-
-          scrollTo(mScroller.getCurrX(),mScroller.getCurrY());
-          isMove=true;
-
-         invalidate();
-      }else {
-          mCourrentPosition=getScrollX();
-
-          isMove=false;
-      }
-    }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -136,11 +132,9 @@ public class MyScoller extends ViewGroup{
 
     @Override
     protected void onLayout(boolean b, int i, int i1, int i2, int i3) {
-
         int startLeft = 0; // 每个子视图的起始布局坐标
         int startTop = 40; // 间距设置为10px 相当于 android：marginTop= "10px"
         int childCount = getChildCount();
-
         for (int l = 0; l < childCount;l++) {
             View child = getChildAt(l);
 
@@ -148,7 +142,6 @@ public class MyScoller extends ViewGroup{
                     startLeft +width,
                     startTop+higth);
             startLeft = startLeft + width;
-
             //校准每个子View的起始布局位置
             //三个子视图的在屏幕中的分布如下 [0 , 320] / [320,640] / [640,960]
         }
@@ -173,22 +166,19 @@ public class MyScoller extends ViewGroup{
                   switch (event.getAction()){
                       case  MotionEvent.ACTION_DOWN:
                           oldX= event.getX();
-
                           oldTime= System.currentTimeMillis();
                           break;
                        case MotionEvent.ACTION_MOVE:
                            nowX= event.getX();
                            newTime=System.currentTimeMillis();
-
-
                            move+=(nowX-oldX);
                            time+=(newTime-oldTime);
-
                            if(Math.abs(move)>=5&&!isMove){
-                               if(move>0){
-                                   startMove(1, move, (int) (time)/10);
+                               Log.e("tag","-----------------进来了----------------");
+                               if(move>=0){
+                                   startMove2(1, move, (int) (time)/10);
                                }else {
-                                   startMove(0,move, (int) (time)/10);
+                                   startMove2(0,move, (int) (time)/10);
                                }
                                move=0;
                                time=0;
@@ -198,10 +188,10 @@ public class MyScoller extends ViewGroup{
                            oldTime=System.currentTimeMillis();
                            break;
                        case  MotionEvent.ACTION_UP:
-                           mScroller.forceFinished(true);
+                          // mScroller.forceFinished(true);
                            oldX= (int) event.getX();
                            oldTime= System.currentTimeMillis();
-                           invalidate();
+                           //animator.end();
                            break;
                   }
 
